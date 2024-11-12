@@ -8,8 +8,7 @@ from pathlib import Path
 from collections import deque
 import random, datetime, os
 from gymnasium import spaces
-import matplotlib.pyplot as plt
-from IPython import display
+
 import numpy as np
 from pyboy import PyBoy
 #from gymnasium.wrappers import FrameStackObservation
@@ -64,11 +63,11 @@ while current_episode < episodes:
         action = Mario_Agent.act(state)
         #print(state)
         # action = torch.tensor(Mario_Agent.act(state))
-        plt.cla()
+        
 
         # Agent performs action
         next_state, reward, done, truncated, info = env.step(action)
-        img = plt.imshow(state)
+       
 
         # Remember
         Mario_Agent.cache(state, next_state, action, reward, done)
@@ -81,9 +80,6 @@ while current_episode < episodes:
 
         # Update state
         state = next_state
-        plt.axis('off')
-        display.display(plt.gcf())
-        display.clear_output(wait=True)
 
         # Check if end of game
         if done:
