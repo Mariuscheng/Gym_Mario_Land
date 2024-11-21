@@ -29,7 +29,6 @@ def find_best_checkpoint(save_dir):
     return best_model if best_model.exists() else None
 
 pyboy = PyBoy("rom.gb" ,window="SDL2")
-#pyboy = PyBoy("pinball.gbc",game_wrapper=False)
 
 env = MarioEnv(pyboy)
 env = SkipFrame(env, skip=4)
@@ -98,113 +97,90 @@ elif latest_checkpoint:
 else:
     print("No existing checkpoints found. Starting fresh training session.")
 
+realMax = []
+episodes = 400
+print("Starting from episode", current_episode)
 
-assert mario.lives_left == 2
-
-# Initialize tracking variables
-episode_reward = 0
-previous_lives = mario.lives_left
-previous_level_progress = 0  # Initialize previous_level_progress
-total_level_progress = 0  # Track accumulated progress
-
-episodes = 40000
-print("Starting from episode",current_episode)
 while current_episode < episodes:
-
     state = env.reset()
     done = False
     episode_reward = 0
 
-    while not done:
+    # Get initial position
+    level_block = pyboy.memory[0xC0AB]
+    mario_x = pyboy.memory[0xC202]
 
+    while not done:
         # Run agent on the state
         action = mario_agent.act(state)
+
+        # Remember previous state before action
+        prev_world, prev_level = mario.world
+        prev_time_left = mario.time_left
+        prev_lives = mario.lives_left
+        prev_x_pos = level_block * 16 + mario_x
 
         # Agent performs action
         next_state, reward, done, truncated, info = env.step(action)
 
-        # Remember
+        # Get current position
+        level_block = pyboy.memory[0xC0AB]
+        mario_x = pyboy.memory[0xC202]
+        current_x_pos = level_block * 16 + mario_x
+
+        # Calculate rewards
+        clock = mario.time_left - prev_time_left
+        movement = current_x_pos - prev_x_pos
+        death = -15 * (mario.lives_left - prev_lives)
+        
+        current_world, current_level = mario.world
+        levelReward = 15 * max((current_world - prev_world), (current_level - prev_level))
+        
+        # Combine all rewards
+        reward = clock + death + movement + levelReward
+
+        # Check respawn timer
+        if pyboy.memory[0xFFA6] > 0:
+            reward = 0
+
+        # Remember and learn
         mario_agent.cache(state, next_state, action, reward, done)
-
-        # Learn
         q, loss = mario_agent.learn()
-
-        # Logging
         logger.log_step(reward, loss, q)
 
-        # Track progress and calculate rewards
-        if mario.level_progress > previous_level_progress:
-            # Add the progress difference to total
-            progress_diff = mario.level_progress - previous_level_progress
-            total_level_progress += progress_diff
-            
-            # Base progress reward
-            progress_reward = progress_diff * 2.0  # Base multiplier for progress
-            
-            # Bonus for passing 251 progress
-            if mario.level_progress > 251:
-                progress_reward += 10.0  # Bigger bonus for passing 251
-            
-            # Bonus for accumulated progress
-            if total_level_progress > 500:
-                progress_reward += 15.0  # Bonus for sustained progress
-            elif total_level_progress > 250:
-                progress_reward += 7.5  # Smaller bonus for medium progress
+        # Update level progress max in realMax list
+        if len(realMax) == 0:
+            realMax.append([current_world, current_level, current_x_pos])
         else:
-            progress_reward = 0
+            found = False
+            for entry in realMax:
+                if entry[0] == current_world and entry[1] == current_level:
+                    entry[2] = max(entry[2], current_x_pos)
+                    found = True
+                    break
+            
+            if not found:
+                realMax.append([current_world, current_level, current_x_pos])
 
-        # Update previous progress
-        previous_level_progress = mario.level_progress
-
-        # Update state
+        # Update state and reward
         state = next_state
-
-        # Get initial world/level at start
-        current_world, current_level = mario.world
-
-        # Check world/level progression
-        new_world, new_level = mario.world
-        if new_world > current_world or new_level > current_level:
-            print(f"Level completed! Advanced to World {new_world}-{new_level}")
-            current_world, current_level = new_world, new_level
-
-        # Check for game completion (4-3 -> 4-4)
-        if current_world == 4 and current_level == 4:
-            print("Game completed! Reached World 4-4")
-            break
-
         episode_reward += reward
 
-    # In the training loop
-    # Check for life loss and apply penalty
-    if mario.lives_left < previous_lives:
-        lives_reward = -100  # Penalty for losing a life
-    #else:
-        #lives_reward = mario.lives_left * 10  # Bonus for maintaining lives
-
-    previous_lives = mario.lives_left  # Update lives count for next check
+    # End of episode logging
     score_reward = mario.score * 0.1
-
-    # Add final rewards to logger
-    logger.log_step(
-        reward=progress_reward + lives_reward + score_reward,
-        loss=loss,
-        q=q
-    )
-
-    # Log episode
     logger.log_episode()
-
+    
     # Print episode summary
     world, level = mario.world
     print(f"\nEpisode {current_episode} - Game Over!")
     print(f"World {world}-{level}")
     print(f"Progress: {mario.level_progress}")
-    print(f"Total Progress Accumulated: {total_level_progress}")
     print(f"Lives Remaining: {mario.lives_left}")
     print(f"Score: {mario.score}")
     print(f"Time: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("-" * 50)
+
+    current_episode += 1
 
     if (current_episode % 20 == 0) or (current_episode == episodes - 1):
         logger.record(
@@ -218,5 +194,4 @@ while current_episode < episodes:
 
     # Reset for next episode
     mario.reset_game()
-    current_episode += 1
     mario_agent.curr_episode = current_episode
