@@ -39,16 +39,16 @@ class MarioAgent:
         self.memory = TensorDictReplayBuffer(
             storage=LazyMemmapStorage(100000, device=torch.device("cpu"))
         )
-        self.batch_size = 64
+        self.batch_size = 32  # Reduced from 64 to learn from smaller batches
 
         self.gamma = 0.99
 
         self.optimizer = torch.optim.Adam(self.net.parameters(), lr=0.00025)
         self.loss_fn = torch.nn.SmoothL1Loss()
 
-        self.burnin = 5e4  # min. experiences before training
-        self.learn_every = 4  # no. of experiences between updates to Q_online
-        self.sync_every = 1e4  # no. of experiences between Q_target & Q_online sync
+        self.burnin = 1000  # Reduced from 5e4 to start learning much earlier
+        self.learn_every = 3  # Reduced from 4 to learn more frequently
+        self.sync_every = 1000  # Reduced from 1e4 to sync target network more often
 
     def act(self, state):
         """
