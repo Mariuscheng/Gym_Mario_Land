@@ -54,9 +54,26 @@ class MarioAgent:
         """
         Choose an epsilon-greedy action and update exploration rate.
         """
+        # NOOP probabilities - higher chance to press buttons than NOOP
+        direction_noop_prob = 0.3
+        function_noop_prob = 0.3
+        
         # Exploration
         if np.random.rand() < self.exploration_rate:
-            action_idx = np.random.randint(self.action_dim)
+            # Direction: 30% chance of NOOP, 70% chance of movement
+            if np.random.rand() < direction_noop_prob:
+                direction_idx = 0  # NOOP
+            else:
+                direction_idx = np.random.randint(1, 5)  # LEFT, RIGHT, UP, DOWN
+                
+            # Function: 30% chance of NOOP, 70% chance of button press
+            if np.random.rand() < function_noop_prob:
+                function_idx = 0  # NOOP
+            else:
+                function_idx = np.random.randint(1, 4)  # A, B, or A+B
+                
+            # Convert to single action index
+            action_idx = direction_idx * 4 + function_idx
         
         # Exploitation
         else:
