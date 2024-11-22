@@ -33,12 +33,111 @@ class DuelingMarioNet(nn.Module):
         # Q_target parameters are frozen.
         for p in self.target.parameters():
             p.requires_grad = False
+            
+        self.output_dim = output_dim
 
     def forward(self, input, model):
         if model == "online":
             return self.online(input)
         elif model == "target":
             return self.target(input)
+
+    def evaluate(self, eval_loader, device):
+        """
+        Evaluate model performance on a validation set
+        
+        Args:
+            eval_loader: DataLoader containing validation data
+            device: Device to run evaluation on
+        
+        Returns:
+            dict containing evaluation metrics
+        """
+        self.eval()  # Set to evaluation mode
+        total_value_loss = 0
+        total_advantage_loss = 0
+        total_samples = 0
+        correct_actions = 0
+        
+        with torch.no_grad():
+            for batch in eval_loader:
+                states, actions, rewards, next_states, dones = batch
+                states = states.to(device)
+                actions = actions.to(device)
+                rewards = rewards.to(device)
+                
+                # Get Q-values from online network
+                q_values = self.online(states)
+                predicted_actions = q_values.argmax(dim=1)
+                
+                # Calculate accuracy
+                correct_actions += (predicted_actions == actions).sum().item()
+                total_samples += actions.size(0)
+                
+                # Get value and advantage estimates
+                features = self.online.feature_net(states)
+                values = self.online.value_net(features)
+                advantages = self.online.advantage_net(features)
+                
+                # Calculate TD error as a proxy for value estimation quality
+                next_q_values = self.target(next_states)
+                next_values = next_q_values.max(1)[0]
+                expected_values = rewards + (1 - dones) * 0.99 * next_values
+                value_loss = ((values - expected_values) ** 2).mean()
+                
+                total_value_loss += value_loss.item()
+                
+        # Calculate metrics
+        action_accuracy = correct_actions / total_samples
+        avg_value_loss = total_value_loss / len(eval_loader)
+        
+        return {
+            'action_accuracy': action_accuracy,
+            'value_loss': avg_value_loss,
+        }
+    
+    def get_action_distribution(self, state, device):
+        """
+        Get probability distribution over actions for a given state
+        
+        Args:
+            state: Input state tensor
+            device: Device to run inference on
+            
+        Returns:
+            Action probabilities
+        """
+        self.eval()
+        with torch.no_grad():
+            state = state.to(device)
+            q_values = self.online(state)
+            # Convert Q-values to probabilities using softmax
+            action_probs = torch.softmax(q_values, dim=1)
+            return action_probs
+    
+    def get_value_confidence(self, state, device):
+        """
+        Calculate confidence in value estimation for a given state
+        
+        Args:
+            state: Input state tensor
+            device: Device to run inference on
+            
+        Returns:
+            Value estimate and confidence score
+        """
+        self.eval()
+        with torch.no_grad():
+            state = state.to(device)
+            features = self.online.feature_net(state)
+            value = self.online.value_net(features)
+            advantage = self.online.advantage_net(features)
+            
+            # Calculate confidence based on advantage spread
+            advantage_spread = advantage.max(dim=1)[0] - advantage.min(dim=1)[0]
+            confidence = 1.0 / (1.0 + advantage_spread)  # Higher spread = lower confidence
+            
+            return value, confidence
 
     def __build_dueling_network(self, c, output_dim):
         # Calculate the output size of conv layers
