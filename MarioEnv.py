@@ -125,22 +125,11 @@ class MarioEnv(gym.Env):
         return observation, reward, terminated, truncated, info
     
     def _calculate_fitness(self):
-        self._previous_fitness = self._fitness
-        
-        # Get current progress in the level
-        current_progress = self.pyboy.game_wrapper.level_progress
-        
-        # Base fitness is the level progress (how far right Mario has moved)
-        progress_reward = current_progress * 0.1
-        
-        # Add score component (if available)
-        score_component = self.pyboy.game_wrapper.score if hasattr(self.pyboy.game_wrapper, 'score') else 0
-        
-        # Penalize for losing lives
-        lives_penalty = -50 if self.pyboy.game_wrapper.lives_left == 0 else 0
-        
-        # Calculate total fitness
-        self._fitness = progress_reward + score_component * 0.01 + lives_penalty
+        self._previous_fitness=self._fitness
+
+        # NOTE: Only some game wrappers will provide a score
+        # If not, you'll have to investigate how to score the game yourself
+        self._fitness=self.pyboy.game_wrapper.score
     
     def reset(self, seed=None, options=None):
         super().reset(seed=40)
