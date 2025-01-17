@@ -55,8 +55,6 @@ else:
     
 
 # mario.game_area_mapping(mario.mapping_compressed, 0)
-mario.set_world_level(1, 2)
-mario.start_game()
 
 assert mario.lives_left == 2
 assert mario.time_left == 400
@@ -91,61 +89,61 @@ while current_episode < episodes:
     
         # Initialize with the current progress
         # ... inside your game loop
-        current_progress = max(0, mario.level_progress)
+        # current_progress = max(0, mario.level_progress)
         
-        if current_progress > mario.level_progress:
-            reward += 1
+        # if current_progress > mario.level_progress:
+        #     reward += 1
         
-        blank = np.atleast_1d([300])
-        tree =  np.atleast_2d([360, 361, 361, 361, 361, 362])    
-        floor = np.atleast_1d([352])
-        question_block = np.atleast_1d([129])
-        tube = np.atleast_2d([[368,369],
-                               [370,371]])
-        mario_array = np.atleast_2d([[0,1],
-                               [16,17]])
+        blank = np.argwhere([300])
+        tree =  np.argwhere([next_state ==  360, next_state == 361, next_state == 362])    
+        floor = np.argwhere([[next_state == 352],[next_state == 353]])
+        
+        question_block = np.argwhere([next_state ==  129])
+        tube = np.argwhere([[next_state ==  368, next_state ==  369],
+                            [next_state ==  370, next_state ==  371]])
+        mario_array = np.argwhere([[next_state == 0, next_state ==  1],
+                                    [next_state == 16, next_state == 17]])
+        if mario_array.itemsize == 0:
+            mario.lives_left -= 1
 
-        if mario_coins + 1:
-            mario_score + 100
+        # if mario_coins + 1:
+        #     mario_score + 100
             
-        if mario.lives_left -1:
-            reward += 0
+        # if mario.lives_left -1:
+        #     mario_score + 0
             
         if mario.lives_left == 0:
-            reward == 0
             mario.reset_game()
-            break
         
         mario_X, mario_y = pyboy.memory[0XC202], pyboy.memory[0XC201]
         
         power_status_time = pyboy.memory[0XFFA6]
         if power_status_time == 0x90:
-            mario_score += 0
+            mario_score + 0
         
         power_status = pyboy.memory[0XFF99]
         if power_status == 0X02:
-            mario_score += 1000
+            mario_score + 1000
         
-        Goomba = np.atleast_1d([144])
-        if Goomba == np.zeros(1).all(where=True):
-        # if (Goomba == 0).all():
-            mario_score += 100
+        Goomba = np.argwhere(next_state == 144)
+        if Goomba.itemsize == 0:
+            mario_score + 100
+                
             
         #if (turle == 0).all():
-        turle = np.atleast_2d([[150],
-                            [151]])
-        if np.all(turle == np.zeros((2, 1)), where=True):
-            mario_score += 100
+        turle = np.argwhere([[next_state == 150], [next_state == 151]])
+        if turle.itemsize == 0:
+            mario_score + 100
             
-        flying_1 = np.atleast_2d([[160,161],
-                                [176,177]])
-        if np.all(flying_1 == np.zeros((2, 2)), where=True):
-            mario_score += 400
+        flying_1 = np.argwhere([[next_state == 160, next_state == 161],
+                                [next_state == 176, next_state == 177]])
+        if flying_1.itemsize == 0:
+            mario_score + 400
         
-        flying_2 = np.atleast_2d([[192,193],
-                                [208,209]])
-        if np.all(flying_2 == np.zeros((2, 2)), where=True):
-            mario_score += 800
+        flying_2 =  np.argwhere([[next_state == 192, next_state == 193],
+                                [next_state == 208, next_state == 209]])
+        if flying_2.itemsize == 0:
+            mario_score + 800
             
                 
         reward = mario_score
@@ -153,12 +151,12 @@ while current_episode < episodes:
         # Update state
         observation = next_state
         
-        terminated = {}
+        terminated = bool(mario.level_progress >= 2601)
         #truncated = mario.level_progress >= 2601 or mario.time_left == 0
         truncated = mario.level_progress >= 2601
 
         if truncated == True:
-            reward + 1000
+            mario_score + 1000
             print("level complete")
             pyboy.stop()
             break
@@ -175,4 +173,3 @@ while current_episode < episodes:
         logger.record(episode=current_episode, epsilon=mario_agent.exploration_rate, step=mario_agent.curr_step)
     current_episode+=1
     mario_agent.curr_episode = current_episode
-
