@@ -23,7 +23,7 @@ def find_latest_checkpoint(save_dir):
 model_name= "Resume_working"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-pyboy = PyBoy("rom.gb", window="SDL2")    
+pyboy = PyBoy("rom.gb", window="SDL2")
 #pyboy.set_emulation_speed(0)
 
 #mario.start_game()
@@ -67,7 +67,6 @@ print("Starting from episode",current_episode)
 while current_episode < episodes:
     
     observation, info = env.reset()
-    
     mario.set_lives_left(10)
     
     while True:
@@ -101,62 +100,47 @@ while current_episode < episodes:
         question_block = np.argwhere([next_state ==  129])
         tube = np.argwhere([[next_state ==  368, next_state ==  369],
                             [next_state ==  370, next_state ==  371]])
-        mario_array = np.argwhere([[next_state == 0, next_state ==  1],
-                                    [next_state == 16, next_state == 17]])
-        if mario_array.itemsize == 0:
-            mario.lives_left -= 1
+        mario_array = np.argwhere([[next_state == 8, next_state ==  9],
+                                    [next_state == 24, next_state == 25]])
+        if len(mario_array) == 0:
+            mario.lives_left - 1
+            
+        Tatol_coins = mario_coins + 1
+        mario_score = Tatol_coins*100
 
-        # if mario_coins + 1:
-        #     mario_score + 100
-            
-        # if mario.lives_left -1:
-        #     mario_score + 0
-            
         if mario.lives_left == 0:
             mario.reset_game()
-        
-        mario_X, mario_y = pyboy.memory[0XC202], pyboy.memory[0XC201]
-        
-        power_status_time = pyboy.memory[0XFFA6]
-        if power_status_time == 0x90:
-            mario_score + 0
-        
-        power_status = pyboy.memory[0XFF99]
-        if power_status == 0X02:
-            mario_score + 1000
+            break
         
         Goomba = np.argwhere(next_state == 144)
-        if Goomba.itemsize == 0:
+        if len(Goomba) == 0:
             mario_score + 100
                 
-            
-        #if (turle == 0).all():
         turle = np.argwhere([[next_state == 150], [next_state == 151]])
-        if turle.itemsize == 0:
+        if len(turle) == 0:
             mario_score + 100
             
         flying_1 = np.argwhere([[next_state == 160, next_state == 161],
                                 [next_state == 176, next_state == 177]])
-        if flying_1.itemsize == 0:
+        if len(flying_1) == 0:
             mario_score + 400
         
         flying_2 =  np.argwhere([[next_state == 192, next_state == 193],
                                 [next_state == 208, next_state == 209]])
-        if flying_2.itemsize == 0:
+        if len(flying_2) == 0:
             mario_score + 800
             
                 
-        reward = mario_score
+        mario_socere = reward
               
         # Update state
         observation = next_state
         
-        terminated = bool(mario.level_progress >= 2601)
+        terminated = {}
         #truncated = mario.level_progress >= 2601 or mario.time_left == 0
         truncated = mario.level_progress >= 2601
 
         if truncated == True:
-            mario_score + 1000
             print("level complete")
             pyboy.stop()
             break
