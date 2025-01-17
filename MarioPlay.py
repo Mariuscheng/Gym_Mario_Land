@@ -139,12 +139,12 @@ while current_episode < episodes:
             
         flying_1 = np.atleast_2d([[160,161],
                                 [176,177]])
-        if np.all(turle == np.zeros((2, 2)), where=True):
+        if np.all(flying_1 == np.zeros((2, 2)), where=True):
             mario_score += 400
         
         flying_2 = np.atleast_2d([[192,193],
                                 [208,209]])
-        if np.all(turle == np.zeros((2, 2)), where=True):
+        if np.all(flying_2 == np.zeros((2, 2)), where=True):
             mario_score += 800
             
                 
