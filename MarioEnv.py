@@ -159,8 +159,7 @@ class MarioEnv(gym.Env, ):
                 
         terminated = self.pyboy.game_wrapper.game_over
         
-        self._calculate_fitness()
-        reward=self._fitness-self._previous_fitness
+        reward=self.pyboy.game_wrapper.score
 
         observation=self.pyboy.game_area()
         
@@ -184,16 +183,11 @@ class MarioEnv(gym.Env, ):
     def close(self):
         self.pyboy.stop()
 
-    # def _get_obs(self):
-    #     return self.pyboy.game_area()
-
-
-    def _calculate_fitness(self):
-        self._previous_fitness=self._fitness
-        self._fitness=self.pyboy.game_wrapper.score
+    def _get_obs(self):
+         return self.pyboy.game_area()
         
-
-
+Test Env:
+=======================================================
 # 初始化 Mario 環境
 # from pyboy.api.memory_scanner import DynamicComparisonType        
 # pyboy = PyBoy("rom.gb", window="SDL2")    
