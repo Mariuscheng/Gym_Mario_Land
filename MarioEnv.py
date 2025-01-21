@@ -36,6 +36,10 @@ class Actions(Enum):
     LEFT_PRESS = 7
     RIGHT_PRESS = 8
     JUMP_PRESS = 9
+    LEFT_RUN = 10
+    RIGHT_RUN = 11
+    LEFT_JUMP = 12
+    RIGHT_JUMP = 13
     
 # class ARROW_Function(Enum):
 #     NOOP = 0
@@ -107,6 +111,18 @@ class MarioEnv(gym.Env, ):
             self.pyboy.button("a")   
         elif action == Actions.FIRE.value:
             self.pyboy.button("b")
+        elif action == Actions.LEFT_RUN.value:
+            self.pyboy.button_press("b")
+            self.pyboy.button_press("left")
+        elif action == Actions.RIGHT_RUN.value:
+            self.pyboy.button_press("b")
+            self.pyboy.button_press("right")
+        elif action == Actions.LEFT_JUMP.value:
+            self.pyboy.button_press("a")
+            self.pyboy.button_press("left")
+        elif action == Actions.RIGHT_JUMP.value:
+            self.pyboy.button_press("a")
+            self.pyboy.button_press("right")
 
         # # Move the agent
         # if action == ARROW_Function[0].NOOP.value:
