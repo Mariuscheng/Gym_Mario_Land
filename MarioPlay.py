@@ -8,10 +8,11 @@ from pathlib import Path
 from collections import deque
 import random, datetime, os
 from gymnasium import spaces
-from gymnasium.wrappers import FrameStackObservation, StickyAction
+from gymnasium.wrappers import FrameStackObservation
 import numpy as np
 from pyboy import PyBoy
 import sys
+import cupy as cp
 
 # Function to find the latest checkpoint in the checkpoints directory
 def find_latest_checkpoint(save_dir):
@@ -31,9 +32,10 @@ pyboy = PyBoy("rom.gb", window="SDL2")
 # 初始化 Mario 環境
 env = MarioEnv(pyboy)
 
-env = SkipFrame(env, skip=4)
+#env = SkipFrame(env, skip=4)
 env = FrameStackObservation(env, stack_size=4)
 #env = StickyAction(env, repeat_action_probability=0.8)
+
 
 mario = pyboy.game_wrapper
 
@@ -59,7 +61,7 @@ else:
 
 # mario.game_area_mapping(mario.mapping_compressed, 0)
 
-assert mario.lives_left == 2
+#assert mario.lives_left == 2
 assert mario.time_left == 400
 assert mario.coins == 0
 assert mario.score == 0
@@ -71,8 +73,6 @@ while current_episode < episodes:
     
     observation, info = env.reset(seed=42)
     mario.set_lives_left(10)
-    
-    previous_enemy_positions = set()
     
     while True:
     # for i in range(1000):
@@ -109,63 +109,36 @@ while current_episode < episodes:
         
        
         mario_array = np.argwhere(np.isin(next_state, [8, 9, 24, 25]))
-        if not mario_array.size:
+        if mario_array.size == 0:
         # Potentially handle when Mario is not found, if needed
             mario_score = mario_score + 0
             
         Tatol_coins = (mario_coins + 1)*100
         mario_score = Tatol_coins
         
-
-        if mario.lives_left == 0:
-            mario.reset_game()
-            break
-        
-        
-        # Identify current enemy positions in the next_state
-        Goomba = set(tuple(pos) for pos in np.argwhere(next_state == 144))
-        Turtle = set(tuple(pos) for pos in np.argwhere(np.isin(next_state, [150, 151])))
-        Flying_1 = set(tuple(pos) for pos in np.argwhere(np.isin(next_state, [160, 161, 176, 177])))
-        Flying_2 = set(tuple(pos) for pos in np.argwhere(np.isin(next_state, [192, 193, 208, 209])))
-
-        # Combine all current enemy positions
-        current_enemy_positions = Goomba | Turtle | Flying_1 | Flying_2
-
-        # Calculate enemies defeated by checking disappearance from previous state
-        enemies_defeated = (previous_enemy_positions - current_enemy_positions)
-        
-        # Award points for each enemy defeated
-        mario_score += 100 * len(enemies_defeated)
-
-        # Update previous enemy positions for the next iteration
-        previous_enemy_positions = current_enemy_positions.copy()
-        
-        # Goomba = np.argwhere(next_state == 144)
-        # Goomba = np.argwhere(next_state == 144)
-        # if bool(len(Goomba) == 0) == True:
-        #     mario_score = mario_score + 100
-        # else:
-        #     mario_score = mario_score + 0
+        Goomba = np.argwhere(next_state == 144)
+        if Goomba.size == 0:
+            mario_score = mario_score + 100
+        else:
+            pass
                 
-        # turle = np.argwhere(np.isin(next_state, [150, 151]))
-        # if np.all(len(turle) == 0):
-        #     mario_score = mario_score + 100
-        # else:
-        #     mario_score = mario_score + 0
-            
-        # flying_1 = np.argwhere([[next_state == 160, next_state == 161],
-        #                         [next_state == 176, next_state == 177]])
-        # if np.all(len(flying_1) == 0):
-        #     mario_score = mario_score + 400
-        # else:
-        #     mario_score = mario_score + 0
+        turle = np.argwhere(np.isin(next_state, [150, 151]))
+        if turle.size == 0:
+            mario_score = mario_score + 100
+        else:
+            pass
         
-        # flying_2 =  np.argwhere([[next_state == 192, next_state == 193],
-        #                         [next_state == 208, next_state == 209]])
-        # if np.all(len(flying_2) == 0):
-        #     mario_score = mario_score + 800
-        # else:
-        #     mario_score = mario_score + 0
+        flying_1 = np.argwhere(np.isin(next_state, [160, 161, 176, 177]))    
+        if flying_1.size == 0:
+            mario_score = mario_score + 400
+        else:
+            pass
+            
+        flying_2 = np.argwhere(np.isin(next_state, [192, 193, 208, 209]))
+        if flying_2.size == 0:
+            mario_score = mario_score + 800
+        else:
+            pass
             
         if pyboy.memory[0xFFA6] == 144:
             mario_score = mario_score + 0
@@ -173,9 +146,13 @@ while current_episode < episodes:
         if pyboy.memory[0xFF99] == 1:
             mario_score = mario_score + 1000
         else :
-            mario_score = mario_score + 0
+            pass
             
         bool(pyboy.memory[0xC20A] == 1)
+        
+        if mario.lives_left == 0:
+            mario.reset_game()
+            break
                 
         mario_socere = reward
               
