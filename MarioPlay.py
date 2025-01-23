@@ -69,8 +69,10 @@ episodes = 40000
 print("Starting from episode",current_episode)
 while current_episode < episodes:
     
-    observation, info = env.reset()
+    observation, info = env.reset(seed=42)
     mario.set_lives_left(10)
+    
+    previous_enemy_positions = set()
     
     while True:
     # for i in range(1000):
@@ -79,7 +81,6 @@ while current_episode < episodes:
         
         mario_score = mario.score
         mario_coins = mario.coins
-        
         
         action = mario_agent.act(observation)
         #action = env.action_space.sample()  # 隨機選擇動作
@@ -94,58 +95,87 @@ while current_episode < episodes:
         current_progress = mario.level_progress
         current_progress += 1
         
+        #game data set and reward
         
-        next_state[next_state == 300] = 0
-        next_state[next_state == 310] = 0
-        next_state[next_state == 305] = 0
-        next_state[next_state == 306] = 0
-        next_state[next_state == 307] = 0
-        next_state[next_state == 350] = 0
+        elements_to_zero = [300, 310, 305, 306, 307, 350, 336, 338]
+        next_state[np.isin(next_state, elements_to_zero)] = 0
         
-        tree =  np.argwhere([next_state ==  360, next_state == 361, next_state == 362])    
-        floor = np.argwhere([[next_state == 352],[next_state == 353]])
-        question_block = np.argwhere([next_state ==  129])
-        tube = np.argwhere([[next_state ==  368, next_state ==  369],
-                            [next_state ==  370, next_state ==  371]])
+        block = np.argwhere(next_state ==  130)
+        black_block = np.argwhere(next_state ==  355)
+        tree =  np.argwhere(np.isin(next_state, [360, 361, 362]))    
+        floor = np.argwhere(np.isin(next_state, [352, 353, 232]))
+        question_block = np.argwhere(np.isin(next_state, [129]))
+        tree =  np.argwhere(np.isin(next_state, [368, 369, 370, 371]))
         
-        mario_array = np.argwhere([[next_state == 8, next_state ==  9],
-                                    [next_state == 24, next_state == 25]])
-        if len(mario_array) == 0:
-        mario_score = mario_score + 0
+       
+        mario_array = np.argwhere(np.isin(next_state, [8, 9, 24, 25]))
+        if not mario_array.size:
+        # Potentially handle when Mario is not found, if needed
+            mario_score = mario_score + 0
             
         Tatol_coins = (mario_coins + 1)*100
         mario_score = Tatol_coins
+        
 
         if mario.lives_left == 0:
             mario.reset_game()
             break
         
-        Goomba = np.argwhere(next_state == 144)
-        if len(Goomba) == 0:
-            mario_score = mario_score + 100
-        else:
-            mario_score = mario_score + 0
-                
-        turle = np.argwhere([[next_state == 150], [next_state == 151]])
-        if len(turle) == 0:
-            mario_score = mario_score + 100
-        else:
-            mario_score = mario_score + 0
-            
-        flying_1 = np.argwhere([[next_state == 160, next_state == 161],
-                                [next_state == 176, next_state == 177]])
-        if len(flying_1) == 0:
-            mario_score = mario_score + 400
-        else:
-            mario_score = mario_score + 0
         
-        flying_2 =  np.argwhere([[next_state == 192, next_state == 193],
-                                [next_state == 208, next_state == 209]])
-        if len(flying_2) == 0:
-            mario_score = mario_score + 800
-        else:
+        # Identify current enemy positions in the next_state
+        Goomba = set(tuple(pos) for pos in np.argwhere(next_state == 144))
+        Turtle = set(tuple(pos) for pos in np.argwhere(np.isin(next_state, [150, 151])))
+        Flying_1 = set(tuple(pos) for pos in np.argwhere(np.isin(next_state, [160, 161, 176, 177])))
+        Flying_2 = set(tuple(pos) for pos in np.argwhere(np.isin(next_state, [192, 193, 208, 209])))
+
+        # Combine all current enemy positions
+        current_enemy_positions = Goomba | Turtle | Flying_1 | Flying_2
+
+        # Calculate enemies defeated by checking disappearance from previous state
+        enemies_defeated = (previous_enemy_positions - current_enemy_positions)
+        
+        # Award points for each enemy defeated
+        mario_score += 100 * len(enemies_defeated)
+
+        # Update previous enemy positions for the next iteration
+        previous_enemy_positions = current_enemy_positions.copy()
+        
+        # Goomba = np.argwhere(next_state == 144)
+        # Goomba = np.argwhere(next_state == 144)
+        # if bool(len(Goomba) == 0) == True:
+        #     mario_score = mario_score + 100
+        # else:
+        #     mario_score = mario_score + 0
+                
+        # turle = np.argwhere(np.isin(next_state, [150, 151]))
+        # if np.all(len(turle) == 0):
+        #     mario_score = mario_score + 100
+        # else:
+        #     mario_score = mario_score + 0
+            
+        # flying_1 = np.argwhere([[next_state == 160, next_state == 161],
+        #                         [next_state == 176, next_state == 177]])
+        # if np.all(len(flying_1) == 0):
+        #     mario_score = mario_score + 400
+        # else:
+        #     mario_score = mario_score + 0
+        
+        # flying_2 =  np.argwhere([[next_state == 192, next_state == 193],
+        #                         [next_state == 208, next_state == 209]])
+        # if np.all(len(flying_2) == 0):
+        #     mario_score = mario_score + 800
+        # else:
+        #     mario_score = mario_score + 0
+            
+        if pyboy.memory[0xFFA6] == 144:
             mario_score = mario_score + 0
             
+        if pyboy.memory[0xFF99] == 1:
+            mario_score = mario_score + 1000
+        else :
+            mario_score = mario_score + 0
+            
+        bool(pyboy.memory[0xC20A] == 1)
                 
         mario_socere = reward
               
@@ -155,7 +185,8 @@ while current_episode < episodes:
         terminated = {}
         #truncated = mario.level_progress >= 2601 or mario.time_left == 0
         truncated = mario.level_progress >= 2601
-
+        
+        # Check if level is complete
         if truncated == True:
             print("level complete")
             pyboy.stop()
