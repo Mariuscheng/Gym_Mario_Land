@@ -111,7 +111,7 @@ while current_episode < episodes:
         mario_array = np.argwhere([[next_state == 8, next_state ==  9],
                                     [next_state == 24, next_state == 25]])
         if len(mario_array) == 0:
-            mario_score + 0
+        mario_score = mario_score + 0
             
         Tatol_coins = (mario_coins + 1)*100
         mario_score = Tatol_coins
@@ -122,29 +122,29 @@ while current_episode < episodes:
         
         Goomba = np.argwhere(next_state == 144)
         if len(Goomba) == 0:
-            mario_score + 100
+            mario_score = mario_score + 100
         else:
-            mario_score + 0
+            mario_score = mario_score + 0
                 
         turle = np.argwhere([[next_state == 150], [next_state == 151]])
         if len(turle) == 0:
-            mario_score + 100
+            mario_score = mario_score + 100
         else:
-            mario_score + 0
+            mario_score = mario_score + 0
             
         flying_1 = np.argwhere([[next_state == 160, next_state == 161],
                                 [next_state == 176, next_state == 177]])
         if len(flying_1) == 0:
-            mario_score + 400
+            mario_score = mario_score + 400
         else:
-            mario_score + 0
+            mario_score = mario_score + 0
         
         flying_2 =  np.argwhere([[next_state == 192, next_state == 193],
                                 [next_state == 208, next_state == 209]])
         if len(flying_2) == 0:
-            mario_score + 800
+            mario_score = mario_score + 800
         else:
-            mario_score + 0
+            mario_score = mario_score + 0
             
                 
         mario_socere = reward
