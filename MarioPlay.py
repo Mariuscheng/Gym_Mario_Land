@@ -2,17 +2,15 @@ import torch
 from MarioMetricLogger import MarioMetricLogger
 from MarioAgent import MarioAgent
 from MarioEnv import MarioEnv
-from MarioWrapper import SkipFrame
 
 from pathlib import Path
 from collections import deque
-import random, datetime, os
+import os
 from gymnasium import spaces
 from gymnasium.wrappers import FrameStackObservation
 import numpy as np
 from pyboy import PyBoy
 import sys
-import cupy as cp
 
 # Function to find the latest checkpoint in the checkpoints directory
 def find_latest_checkpoint(save_dir):
@@ -24,7 +22,6 @@ def find_latest_checkpoint(save_dir):
 
 model_name= "Resume_working"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 pyboy = PyBoy("rom.gb", window="SDL2")
 #pyboy.set_emulation_speed(0)
 
@@ -38,6 +35,8 @@ env = FrameStackObservation(env, stack_size=4)
 
 
 mario = pyboy.game_wrapper
+#mario.set_world_level(3, 2)
+mario.start_game()
 
 base_save_dir = Path("checkpoints")
 save_dir = base_save_dir / model_name #datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
@@ -59,19 +58,37 @@ else:
     print("No existing checkpoints found. Created a new directory for this training session.")
     
 
-# mario.game_area_mapping(mario.mapping_compressed, 0)
+#mario.game_area_mapping(mario.mapping_compressed, 0)
 
-#assert mario.lives_left == 2
+# assert mario.lives_left == 2
 assert mario.time_left == 400
 assert mario.coins == 0
 assert mario.score == 0
 
+# while pyboy.tick():
+#     print(mario)
+#     print(pyboy.get_sprite_by_tile_identifier([16,17]))
+#     pass
+    
+# pyboy.stop()
 
 episodes = 40000
 print("Starting from episode",current_episode)
 while current_episode < episodes:
     
     observation, info = env.reset(seed=42)
+    
+    mushroom = pyboy.get_sprite_by_tile_identifier([131])
+        
+    mario_pos = pyboy.get_sprite_by_tile_identifier([0, 1, 16, 17], on_screen=True)
+    Big_mario = pyboy.get_sprite_by_tile_identifier([33, 32, 49, 48])
+    flying_1 = pyboy.get_sprite_by_tile_identifier([160, 161, 176, 177])
+    tube = pyboy.get_sprite_by_tile_identifier([368, 369, 370, 371])    
+    floor = pyboy.get_sprite_by_tile_identifier([352, 353])   
+    Goomba = pyboy.get_sprite_by_tile_identifier([144])
+    turle = pyboy.get_sprite_by_tile_identifier([150, 151])         
+    blank = pyboy.get_sprite_by_tile_identifier([300])
+    
     mario.set_lives_left(10)
     
     while True:
@@ -95,76 +112,55 @@ while current_episode < episodes:
         current_progress = mario.level_progress
         current_progress += 1
         
-        #game data set and reward
-        
-        elements_to_zero = [300, 310, 305, 306, 307, 350, 336, 338]
-        next_state[np.isin(next_state, elements_to_zero)] = 0
-        
-        block = np.argwhere(next_state ==  130)
-        black_block = np.argwhere(next_state ==  355)
-        tree =  np.argwhere(np.isin(next_state, [360, 361, 362]))    
-        floor = np.argwhere(np.isin(next_state, [352, 353, 232]))
-        question_block = np.argwhere(np.isin(next_state, [129]))
-        tree =  np.argwhere(np.isin(next_state, [368, 369, 370, 371]))
-        
-       
-        mario_array = np.argwhere(np.isin(next_state, [8, 9, 24, 25]))
-        if mario_array.size == 0:
-        # Potentially handle when Mario is not found, if needed
-            mario_score = mario_score + 0
-            
         Tatol_coins = (mario_coins + 1)*100
         mario_score = Tatol_coins
-        
-        Goomba = np.argwhere(next_state == 144)
-        if Goomba.size == 0:
-            mario_score = mario_score + 100
-        else:
-            pass
-                
-        turle = np.argwhere(np.isin(next_state, [150, 151]))
-        if turle.size == 0:
-            mario_score = mario_score + 100
-        else:
-            pass
-        
-        flying_1 = np.argwhere(np.isin(next_state, [160, 161, 176, 177]))    
-        if flying_1.size == 0:
-            mario_score = mario_score + 400
-        else:
-            pass
             
-        flying_2 = np.argwhere(np.isin(next_state, [192, 193, 208, 209]))
-        if flying_2.size == 0:
-            mario_score = mario_score + 800
-        else:
-            pass
-            
-        if pyboy.memory[0xFFA6] == 144:
+        
+        #flying_2 = jax.numpy.argwhere(jnp.isin(observation_tensor , jnp.array([192, 193, 208, 209])))
+        # if flying_2.size != 0:
+        #     if flying_2.size == 0:
+        #         print("flying_2 : ", flying_2)
+        #         mario_score = mario_score + 800
+        
+        # Powerup Status Timer    
+        if 2 <= pyboy.memory[0xFFA6] < 144:
             mario_score = mario_score + 0
-            
-        if pyboy.memory[0xFF99] == 1:
-            mario_score = mario_score + 1000
-        else :
-            pass
-            
-        bool(pyboy.memory[0xC20A] == 1)
         
+        # Y position
+        mario_y_pos = pyboy.memory[0XC202]
+        
+        # jump routine
+        jump_routine = pyboy.memory[0XC207]
+        
+        # something move
+        move_thing = pyboy.memory[0XD103]
+        if move_thing == 0:
+            mario_score = mario_score + 100 
+        
+        # Powerup Status  
+        Powerup_Status = pyboy.memory[0xFF99]
+        if Powerup_Status == 0:
+            mario_score = mario_score + 0
+
         if mario.lives_left == 0:
             mario.reset_game()
+            # print(jnp.isin(observation, jnp.array([144])))
             break
-                
-        mario_socere = reward
+              
+        reward = mario_score
+        # print(reward)
               
         # Update state
-        observation = next_state
+        observation_tensor = next_state
         
-        terminated = {}
+        terminated = mario.level_progress >= 2601
         #truncated = mario.level_progress >= 2601 or mario.time_left == 0
-        truncated = mario.level_progress >= 2601
+        truncated = {}
+        
         
         # Check if level is complete
-        if truncated == True:
+        if terminated == True:
+            mario_score = max(0, mario_score)
             print("level complete")
             pyboy.stop()
             sys.exit(0)
